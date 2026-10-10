@@ -54,11 +54,11 @@ function lectureLabel(name) {
 /* ---------- المواد ---------- */
 // عدّل عدد المحاضرات (أو الأجزاء) لكل مادة حسب ما عندك فعلاً
 const SUBJECTS = [
-  { name: 'تشريح الجهاز العصبي', lectures: LECTS(12), color: '#FF6F61', icon: 'i-brain' },
-  { name: 'الفيزيولوجيا 2',      lectures: LECTS(12), color: '#14B8A6', icon: 'i-pulse' },
-  { name: 'الكيمياء السريرية 2', lectures: LECTS(12), color: '#4C9AFF', icon: 'i-pill'  },
+  { name: 'تشريح الجهاز العصبي', lectures: LECTS(10), color: '#FF6F61', icon: 'i-brain' },
+  { name: 'الفيزيولوجيا 2',      lectures: LECTS(19), color: '#14B8A6', icon: 'i-pulse' },
+  { name: 'الكيمياء السريرية 2', lectures: LECTS(10), color: '#4C9AFF', icon: 'i-pill'  },
   { name: 'أخلاقيات الطب',       lectures: LECTS(12), color: '#F5B93B', icon: 'i-book'  },
   { name: 'الوبائيات',           lectures: LECTS(12), color: '#8B7CF6', icon: 'i-stats' },
-  { name: 'المهارات السريرية',   lectures: LECTS(12), color: '#EC5F9A', icon: 'i-steth' },
+  { name: 'المهارات السريرية',   lectures: LECTS(28), color: '#EC5F9A', icon: 'i-steth' },
   { name: 'الأحياء الدقيقة',     lectures: LECTS(12), color: '#12284C', icon: 'i-germ'  }
 ];
