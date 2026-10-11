@@ -300,6 +300,12 @@ if ('serviceWorker' in navigator) {
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
       window.addEventListener('online', check);
     }).catch(() => {});
+    // بعد اكتمال فتح الموقع نطلب من الـ service worker تحميل المحاضرات الناقصة في الخلفية
+    navigator.serviceWorker.ready.then(reg => {
+      const go = () => { if (navigator.onLine && reg.active) reg.active.postMessage('cache-pdfs'); };
+      setTimeout(go, 4000);
+      window.addEventListener('online', go);
+    });
   });
 }
 
