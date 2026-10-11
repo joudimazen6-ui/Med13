@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>med13</title>
+<title>Med13</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#12284C">
 <link rel="icon" href="icons/icon-192.png">
@@ -34,6 +34,7 @@
     <symbol id="i-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M4 19V5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/></g></symbol>
     <symbol id="i-timer" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 13V9M9 2h6"/></g></symbol>
     <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 3v4M8 3v4M3 10h18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="i-pdf" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 2h8l5 5v15H6z"/><path d="M14 2v5h5"/></g></symbol>
   </defs>
 </svg>
@@ -59,6 +60,7 @@
     <button data-go="plan"><svg><use href="#i-steth"/></svg><span>الخطة الدراسية</span></button>
     <button data-go="pomo"><svg><use href="#i-timer"/></svg><span>بومودورو</span></button>
     <button data-go="lectures"><svg><use href="#i-book"/></svg><span>المحاضرات</span></button>
+    <button data-go="week"><svg><use href="#i-cal"/></svg><span>المخطط</span></button>
   </nav>
   <button id="editName" class="user-chip" title="تعديل الاسم"><span id="chipName"></span> ✎</button>
 </header>
@@ -98,12 +100,19 @@
       <div class="star-log" id="starLog"></div>
     </div>
 
+    <section class="level-card card" aria-labelledby="levelTitle">
+      <div class="level-top"><div><p class="eyebrow">رحلتك الدراسية</p><h2 id="levelTitle">المستوى <span id="levelNumber">1</span></h2><p id="levelCaption">ابدأ رحلتك واجمع النجوم</p></div><div id="levelEmblem" class="level-emblem level-1" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 8 86 29 86 71 50 92 14 71 14 29Z M50 8V92 M14 29 86 71 M86 29 14 71"/><circle cx="50" cy="50" r="22"/><circle cx="50" cy="8" r="4"/><circle cx="86" cy="29" r="4"/><circle cx="86" cy="71" r="4"/><circle cx="50" cy="92" r="4"/><circle cx="14" cy="71" r="4"/><circle cx="14" cy="29" r="4"/></svg></div></div>
+      <div class="level-progress-head"><span id="levelStarText">0 نجمة</span><span id="levelNextText">20 نجمة للمستوى التالي</span></div><div class="level-track"><i id="levelBar"></i></div>
+      <div class="level-badges" id="levelBadges" aria-label="المستويات"></div>
+    </section>
+    <section class="card backup-card"><div><h2>نسخة احتياطية لبياناتك</h2><p class="muted">صدّر بياناتك للاحتفاظ بنسخة أو استعد نسخة سابقة على هذا الجهاز.</p></div><div class="backup-actions"><button type="button" id="exportData" class="btn primary">تصدير البيانات</button><button type="button" id="importDataBtn" class="btn ghost">استيراد نسخة</button><input type="file" id="importDataFile" accept="application/json,.json" hidden></div><p id="backupStatus" class="muted small" role="status"></p></section>
+
     <!-- ملاحظة شرح السماعات -->
     <div class="guide-card">
       <div class="guide-icon">⭐</div>
       <div class="guide-text">
         <strong>ما هي النجوم وكيف أحصل عليها؟</strong>
-        <p>تحصل على نجمة عن كل 8 جلسات تركيز مكتملة في اليوم الواحد، وكلما زادت جلساتك زادت نجومك: 8 جلسات = نجمة، و16 جلسة = نجمتان، و24 جلسة = 3 نجوم، وهكذا. إذا أنهيت أقل من 8 جلسات في يوم ما فلا تحصل على نجمة ذلك اليوم، ولا تنتقل الجلسات الناقصة إلى اليوم التالي. النجوم التي تكسبها كل يوم تُحفظ وتُضاف إلى نجومك السابقة.</p>
+        <p>تحصل على النجوم من نظامك السابق لجلسات التركيز، وتكسب نجمة إضافية عند إكمال مهمة جديدة في المخطط الأسبوعي. كما تحصل على 3 نجوم مكافأة لكل 8 جلسات عمل مكتملة جديدة. تُحفظ المكافآت محلياً على جهازك، وتُعرض مستوياتك وفق مجموع النجوم.</p>
       </div>
     </div>
   </section>
@@ -183,6 +192,8 @@
       <p class="muted small">ضع ملفات PDF داخل المجلدات: pdfs/subject1/L01.pdf وهكذا.</p>
     </div>
   </section>
+  <!-- المخطط الأسبوعي -->
+  <section id="week" class="panel" aria-label="المخطط الأسبوعي"></section>
 </main>
 
 <!-- اقتراح إضافة الموقع إلى الشاشة الرئيسية (أول مرة فقط) -->
@@ -203,6 +214,8 @@
 <script src="config.js"></script>
 <script src="script.js"></script>
 <script src="gamification.js"></script>
+<script src="planner.js"></script>
+<script src="levels-backup.js"></script>
   
 </body>
 </html>
