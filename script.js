@@ -240,6 +240,7 @@ function renderLectures() {
 
   $('#subjName').textContent = s.name;
   $('#subjCount').textContent = '';
+  if (typeof markOffline === 'function') markOffline();
 }
 
 /* ========= اقتراح إضافة الموقع إلى الشاشة الرئيسية (مرة واحدة فقط) ========= */
@@ -300,17 +301,95 @@ if ('serviceWorker' in navigator) {
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
       window.addEventListener('online', check);
     }).catch(() => {});
-    // بعد اكتمال فتح الموقع نطلب من الـ service worker تحميل المحاضرات الناقصة في الخلفية
-    navigator.serviceWorker.ready.then(reg => {
-      const go = () => { if (navigator.onLine && reg.active) reg.active.postMessage('cache-pdfs'); };
-      setTimeout(go, 4000);
-      window.addEventListener('online', go);
-    });
-
-    <script data-goatcounter="https://joudi.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
   });
 }
 
 /* ========= طلب تخزين دائم: يمنع المتصفح من حذف بيانات الطالب عند امتلاء المساحة ========= */
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+/* ========= تحميل المحاضرات للعمل بدون إنترنت (من الصفحة مع عرض التقدم) ========= */
+const offline = { busy: false, stopped: false, done: 0, total: 0, missing: [] };
+function pdfCacheName() { return 'student-pdfs-' + PDF_VERSION; }  // نفس اسم المخزن في sw.js
+function allPdfs() { return SUBJECTS.flatMap((s, i) => lectureNames(s).map(n => pdfPath(i + 1, n))); }
+
+function showOffline() {
+  const left = offline.total - offline.done - offline.missing.length;
+  let msg;
+  if (offline.busy) msg = `جاري تجهيز المحاضرات للعمل بدون إنترنت: ${offline.done} من ${offline.total}. أبقِ الموقع مفتوحاً.`;
+  else if (offline.stopped) msg = `توقف التحميل عند ${offline.done} من ${offline.total}. سيكمل عند فتح الموقع بإنترنت.`;
+  else if (left <= 0) msg = `✓ جاهز بدون إنترنت: ${offline.done} محاضرة محفوظة.`;
+  else msg = `المحفوظ للأوفلاين: ${offline.done} من ${offline.total}.`;
+  $('#offlineStatus').textContent = msg;
+  $('#offlineBtn').hidden = offline.busy || left <= 0;
+  $('#offlineMissingBox').hidden = !offline.missing.length;
+  $('#offlineMissingList').textContent = offline.missing.join(' ، ');
+}
+
+// وضع علامة ✓ بجانب كل محاضرة محفوظة
+async function markOffline() {
+  if (!('caches' in window)) return;
+  try {
+    const c = await caches.open(pdfCacheName());
+    for (const a of $$('#lectList a')) {
+      const li = a.closest('li');
+      const old = li.querySelector('.ok-badge');
+      const has = !!(await c.match(a.href));
+      if (has && !old) {
+        const b = document.createElement('span');
+        b.className = 'ok-badge'; b.textContent = '✓ جاهز أوفلاين';
+        li.insertBefore(b, a);
+      } else if (!has && old) old.remove();
+    }
+  } catch (e) {}
+}
+
+async function refreshOffline() {
+  const c = await caches.open(pdfCacheName());
+  const all = allPdfs();
+  let n = 0;
+  for (const u of all) if (await c.match(u)) n++;
+  offline.done = n; offline.total = all.length;
+  showOffline(); markOffline();
+}
+
+async function downloadOfflinePdfs() {
+  if (offline.busy || !('caches' in window) || !navigator.onLine) return;
+  offline.busy = true; offline.stopped = false; offline.missing = [];
+  const c = await caches.open(pdfCacheName());
+  const todo = [];
+  for (const u of allPdfs()) if (!(await c.match(u))) todo.push(u);
+  offline.total = allPdfs().length; offline.done = offline.total - todo.length;
+  let i = 0;
+  showOffline();
+  const worker = async () => {
+    while (i < todo.length && !offline.stopped) {
+      const u = todo[i++];
+      try {
+        const res = await fetch(u);
+        if (res.ok) { await c.put(u, res); offline.done++; }
+        else offline.missing.push(u.replace('pdfs/', ''));
+      } catch (e) { offline.stopped = true; }  // انقطع الاتصال: نتوقف ونكمل لاحقاً
+      showOffline();
+      if (offline.done % 3 === 0) markOffline();
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);   // 3 ملفات في المرة
+  offline.busy = false;
+  showOffline(); markOffline();
+}
+
+function canAutoDownload() {
+  const c = navigator.connection;
+  if (!c) return true;
+  if (c.saveData) return false;
+  return c.type !== 'cellular' && !/2g/.test(c.effectiveType || '');  // لا نحمّل تلقائياً على بيانات الجوال
+}
+
+async function initOffline() {
+  if (!('caches' in window)) return;
+  $('#offlineBtn').addEventListener('click', downloadOfflinePdfs);
+  window.addEventListener('online', () => { if (canAutoDownload()) downloadOfflinePdfs(); });
+  await refreshOffline();
+  if (navigator.onLine && canAutoDownload()) setTimeout(downloadOfflinePdfs, 3000);
+}
+initOffline();
