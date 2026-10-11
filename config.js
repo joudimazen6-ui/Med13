@@ -4,11 +4,26 @@
    فلا حاجة لتعديل أي شيء آخر.
    ===================================================== */
 
-const APP_VERSION = 'v14';
+// ارفع هذا الرقم عند كل تعديل في أي ملف من ملفات الموقع (v13 ثم v14 ...)
+const APP_VERSION = 'v15';
+
+// ارفع هذا الرقم فقط إذا استبدلت ملف PDF موجوداً بنفس الاسم (يُعاد تحميل كل ملفات PDF)
 const PDF_VERSION = '1';
 
-/* أسماء ملفات المحاضرات: pdfs/subject1/ ثم subject2/ ... بالاسم L01.pdf ...
-   الاسم حساس لحالة الأحرف (L كبيرة، و .pdf صغيرة). */
+/* ---------- أسماء ملفات المحاضرات ----------
+   الملفات تكون في: pdfs/subject1/ ثم subject2/ ... بالاسم: L01.pdf و L02.pdf ...
+   انتبه: الاسم حساس لحالة الأحرف على الاستضافة (L كبيرة، و .pdf صغيرة).
+
+   طريقة 1: LECTS(عدد المحاضرات)
+       LECTS(12)  ->  L01 ... L12
+
+   طريقة 2: LECTS(عدد المحاضرات, { رقم_المحاضرة: 'الحروف' })  لمحاضرة مقسومة إلى أجزاء
+       LECTS(5, { 1: 'ab', 3: 'abc' })
+       ->  L01a, L01b, L02, L03a, L03b, L03c, L04, L05
+
+   طريقة 3: كتابة الأسماء يدوياً (بدون .pdf)
+       ['L01a', 'L01b', 'L02', 'Intro']
+*/
 function LECTS(count, parts) {
   parts = parts || {};
   const out = [];
@@ -20,20 +35,24 @@ function LECTS(count, parts) {
   return out;
 }
 
+// تحويل إعداد المادة إلى قائمة أسماء (رقم، أو LECTS، أو قائمة يدوية)
 function lectureNames(subject) {
   return Array.isArray(subject.lectures) ? subject.lectures : LECTS(Number(subject.lectures) || 0);
 }
 
+// مسار ملف المحاضرة: subject يبدأ من 1
 function pdfPath(subject, name) {
   return `pdfs/subject${subject}/${name}.pdf`;
 }
 
+// الاسم الذي يظهر للطالب: L01 -> المحاضرة 1 ، L01a -> المحاضرة 1 (a)
 function lectureLabel(name) {
   const m = /^L0*(\d+)(.*)$/i.exec(name);
   return m ? 'المحاضرة ' + m[1] + (m[2] ? ' (' + m[2] + ')' : '') : name;
 }
 
 /* ---------- المواد ---------- */
+// عدّل عدد المحاضرات (أو الأجزاء) لكل مادة حسب ما عندك فعلاً
 const SUBJECTS = [
   { name: 'تشريح الجهاز العصبي', lectures: ['L02a', 'L02b', 'L03a', 'L03b', 'L04', 'L05a', 'L05b', 'L06', 'L07', 'L08'], color: '#FF6F61', icon: 'i-brain' },
   { name: 'الفيزيولوجيا 2',      lectures: LECTS(12), color: '#14B8A6', icon: 'i-pulse' },
