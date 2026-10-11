@@ -1,10 +1,11 @@
+
 /* المواد معرّفة في config.js */
 
 /* ========= التخزين المحلي ========= */
 const KEY = 'student-site-v1';
 const DEFAULTS = { name: '', tasks: [], work: 25, rest: 5, sessions: {}, starsByDay: {}, lect: {}, subject: 0, section: 'home', pomo: null, a2hsAsked: false };
 let S = load();
-const MIN_WORK = 25; // الحد الأدنى لجلسة التركيز بالدقائق
+const MIN_WORK = 25;
 if (S.work < MIN_WORK) { S.work = MIN_WORK; save(); }
 function load() {
   try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY)) || {}); }
@@ -14,7 +15,6 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
-// تاريخ اليوم بالتوقيت المحلي (YYYY-MM-DD)
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
 const pad = n => String(n).padStart(2, '0');
 
@@ -91,8 +91,7 @@ function addTask() {
 $('#taskAdd').addEventListener('click', addTask);
 $('#taskInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
 
-/* ========= العد التنازلي لبداية الامتحانات (الصفحة الرئيسية فقط) ========= */
-// لتغيير الموعد عدّل هذا السطر فقط (الصيغة: سنة-شهر-يوم)
+/* ========= العد التنازلي لبداية الامتحانات ========= */
 const EXAM_START = new Date('2027-01-17T00:00:00');
 
 const daysEl = document.getElementById('days');
@@ -140,7 +139,6 @@ function drawPomo() {
   document.title = timer ? `${$('#pomoTime').textContent} • med13` : 'med13';
 }
 function savePomo() { S.pomo = { mode, left, running: !!timer, endAt: timer ? endAt : 0 }; save(); }
-// استرجاع المؤقت بعد إغلاق الموقع: يكمل إن كان شغالاً، أو يرجع متوقفاً مؤقتاً كما تركه
 function restorePomo(p) {
   if (!p) return;
   mode = p.mode === 'rest' ? 'rest' : 'work';
@@ -172,7 +170,7 @@ function startPause() {
 }
 function finishPhase() {
   if (mode === 'work') {
-    const k = today(); S.sessions[k] = (S.sessions[k] || 0) + 1; save(); renderSessions();
+    const k = today(); S.sessions[k] = (S.sessions[k] || 0) + 1; save(); renderSessions(); document.dispatchEvent(new CustomEvent('med13:pomo-work-completed', { detail: { count: Object.values(S.sessions).reduce((n, v) => n + (Number(v) || 0), 0), day: k } }));
   }
   beep();
   mode = mode === 'work' ? 'rest' : 'work';
@@ -193,7 +191,6 @@ function beep() {
 function renderSessions() {
   const n = S.sessions[today()] || 0;
   $('#pomoCount').textContent = n;
-  // تحديث النجوم (gamification.js)
   if (typeof updateStars === 'function') updateStars();
 }
 $('#pomoStart').addEventListener('click', startPause);
@@ -243,7 +240,7 @@ function renderLectures() {
   if (typeof markOffline === 'function') markOffline();
 }
 
-/* ========= اقتراح إضافة الموقع إلى الشاشة الرئيسية (مرة واحدة فقط) ========= */
+/* ========= اقتراح إضافة الموقع إلى الشاشة الرئيسية ========= */
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; });
 window.addEventListener('appinstalled', () => { deferredPrompt = null; closeA2hs(); });
@@ -255,20 +252,18 @@ const isMobile = () => isIOS() || /android/i.test(navigator.userAgent);
 function closeA2hs() { $('#a2hs').hidden = true; S.a2hsAsked = true; save(); }
 
 function maybeAskA2hs() {
-  // فقط على الجوال، وبعد إدخال الاسم، ومرة واحدة، وليس إذا فُتح الموقع من الشاشة الرئيسية أصلاً
   if (S.a2hsAsked || !S.name || !$('#welcome').hidden || isStandalone() || !isMobile()) return;
   $('#a2hs').hidden = false;
 }
 
 $('#a2hsYes').addEventListener('click', async () => {
-  if (deferredPrompt) {                       // أندرويد/كروم: نافذة الإضافة الجاهزة
+  if (deferredPrompt) {
     deferredPrompt.prompt();
     try { await deferredPrompt.userChoice; } catch (e) {}
     deferredPrompt = null;
     closeA2hs();
     return;
   }
-  // iPhone وبقية المتصفحات: خطوات يدوية قصيرة
   $('#a2hsTitle').textContent = 'خطوات سريعة';
   $('#a2hsText').textContent = isIOS()
     ? 'اضغط زر المشاركة (المربع مع السهم للأعلى) في Safari، ثم اختر «إضافة إلى الشاشة الرئيسية».'
@@ -280,15 +275,14 @@ $('#a2hsYes').addEventListener('click', async () => {
 $('#a2hsNo').addEventListener('click', closeA2hs);
 
 /* ========= التشغيل ========= */
-const savedPomo = S.pomo; // نقرأ الحالة المحفوظة قبل أن يعيد resetPomo كتابتها
+const savedPomo = S.pomo;
 renderGreeting(); renderTasks(); renderSessions(); renderTabs(); renderLectures(); resetPomo();
 restorePomo(savedPomo);
 go(S.section && document.getElementById(S.section) ? S.section : 'home');
 if (!S.name) showWelcome(false); else setTimeout(maybeAskA2hs, 1500);
 
-/* ========= PWA: تسجيل خدمة العمل أوفلاين ========= */
+/* ========= PWA ========= */
 if ('serviceWorker' in navigator) {
-  // إذا كان هناك service worker سابق وتم تحديثه، أعد تحميل الصفحة مرة واحدة لتظهر النسخة الجديدة
   const hadController = !!navigator.serviceWorker.controller;
   let reloaded = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -296,20 +290,17 @@ if ('serviceWorker' in navigator) {
   });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
-      // تحقق من وجود تحديث كلما عاد الطالب للتطبيق أو عاد الإنترنت
       const check = () => reg.update().catch(() => {});
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
       window.addEventListener('online', check);
     }).catch(() => {});
   });
 }
-
-/* ========= طلب تخزين دائم: يمنع المتصفح من حذف بيانات الطالب عند امتلاء المساحة ========= */
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
-/* ========= تحميل المحاضرات للعمل بدون إنترنت (من الصفحة مع عرض التقدم) ========= */
+/* ========= تحميل المحاضرات للعمل بدون إنترنت ========= */
 const offline = { busy: false, stopped: false, done: 0, total: 0, missing: [] };
-function pdfCacheName() { return 'student-pdfs-' + PDF_VERSION; }  // نفس اسم المخزن في sw.js
+function pdfCacheName() { return 'student-pdfs-' + PDF_VERSION; }
 function allPdfs() { return SUBJECTS.flatMap((s, i) => lectureNames(s).map(n => pdfPath(i + 1, n))); }
 
 function showOffline() {
@@ -325,7 +316,6 @@ function showOffline() {
   $('#offlineMissingList').textContent = offline.missing.join(' ، ');
 }
 
-// وضع علامة ✓ بجانب كل محاضرة محفوظة
 async function markOffline() {
   if (!('caches' in window)) return;
   try {
@@ -342,7 +332,6 @@ async function markOffline() {
     }
   } catch (e) {}
 }
-
 async function refreshOffline() {
   const c = await caches.open(pdfCacheName());
   const all = allPdfs();
@@ -351,7 +340,6 @@ async function refreshOffline() {
   offline.done = n; offline.total = all.length;
   showOffline(); markOffline();
 }
-
 async function downloadOfflinePdfs() {
   if (offline.busy || !('caches' in window) || !navigator.onLine) return;
   offline.busy = true; offline.stopped = false; offline.missing = [];
@@ -368,23 +356,21 @@ async function downloadOfflinePdfs() {
         const res = await fetch(u);
         if (res.ok) { await c.put(u, res); offline.done++; }
         else offline.missing.push(u.replace('pdfs/', ''));
-      } catch (e) { offline.stopped = true; }  // انقطع الاتصال: نتوقف ونكمل لاحقاً
+      } catch (e) { offline.stopped = true; }
       showOffline();
       if (offline.done % 3 === 0) markOffline();
     }
   };
-  await Promise.all([worker(), worker(), worker()]);   // 3 ملفات في المرة
+  await Promise.all([worker(), worker(), worker()]);
   offline.busy = false;
   showOffline(); markOffline();
 }
-
 function canAutoDownload() {
   const c = navigator.connection;
   if (!c) return true;
   if (c.saveData) return false;
-  return c.type !== 'cellular' && !/2g/.test(c.effectiveType || '');  // لا نحمّل تلقائياً على بيانات الجوال
+  return c.type !== 'cellular' && !/2g/.test(c.effectiveType || '');
 }
-
 async function initOffline() {
   if (!('caches' in window)) return;
   $('#offlineBtn').addEventListener('click', downloadOfflinePdfs);
