@@ -40,7 +40,7 @@ async function precacheFonts(cache) {
   } catch (e) { /* لا إنترنت الآن: سيُخزَّن الخط عند أول فتح أونلاين */ }
 }
 
-/* ===== التثبيت: ملفات الموقع فقط (سريع). ملفات PDF تُحمَّل بعده في الخلفية ===== */
+/* ===== التثبيت: ملفات الموقع فقط (سريع). ملفات PDF تُحمَّل من الصفحة مع عرض التقدم ===== */
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const app = await caches.open(APP_CACHE);
@@ -48,48 +48,6 @@ self.addEventListener('install', event => {
     await precacheFonts(app);
     await self.skipWaiting();
   })());
-});
-
-/* ===== تحميل ملفات PDF الناقصة تلقائياً في الخلفية (تم تحسينها لتكون أضمن وأسرع) ===== */
-let pdfJob = null;
-function cacheMissingPdfs() {
-  if (pdfJob) return pdfJob; // لا نشغّل عمليتين معاً
-  pdfJob = (async () => {
-    const pdf = await caches.open(PDF_CACHE);
-    const missing = [];
-    for (const u of PDFS) {
-      const match = await pdf.match(u);
-      if (!match) missing.push(u);
-    }
-    
-    if (missing.length === 0) return;
-
-    let index = 0;
-    const worker = async () => {
-      while (index < missing.length) {
-        const u = missing[index++];
-        try {
-          const res = await fetch(u);
-          if (res && res.ok) {
-            await pdf.put(u, res);
-          }
-        } catch (e) {
-          // في حال انقطع الاتصال بملف معين، نتابع بقية الملفات ولا نوقف العملية بالكامل
-        }
-      }
-    };
-
-    // تشغيل 3 عمال بالتوازي لتحميل الملفات بسرعة في الخلفية
-    await Promise.all([worker(), worker(), worker()]);
-  })().finally(() => { pdfJob = null; });
-  return pdfJob;
-}
-
-// الصفحة ترسل هذه الرسالة بعد اكتمال تحميلها، لبدء تحميل المحاضرات أوفلاين
-self.addEventListener('message', event => {
-  if (event.data === 'cache-pdfs') {
-    event.waitUntil(cacheMissingPdfs());
-  }
 });
 
 /* ===== التفعيل: حذف النسخ القديمة ===== */
@@ -127,7 +85,7 @@ async function pdfFetch(req) {
   if (cached) return cached;
   try {
     const res = await fetch(req);
-    if (res && res.ok) cache.put(req, res.clone());
+    if (res.ok && res.status === 200) cache.put(req, res.clone());
     return res;
   } catch (e) {
     return Response.error();
