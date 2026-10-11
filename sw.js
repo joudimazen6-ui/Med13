@@ -19,46 +19,66 @@ const CORE = [
 // خط Tajawal: نخزّن ملف التنسيق وملفات الخط التي بداخله ليعمل الخط أوفلاين
 const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap';
 
-// pdfs/subject1/L01.pdf ... pdfs/subject7/LNN.pdf (الاسم يُبنى في config.js)
+// pdfs/subject1/L01.pdf ... (الأسماء تُبنى في config.js)
 const PDFS = SUBJECTS.flatMap((s, i) => lectureNames(s).map(name => pdfPath(i + 1, name)));
 
 // طلب يتجاوز كاش المتصفح ليجلب أحدث نسخة من الشبكة
 const fresh = url => new Request(url, { cache: 'reload' });
+const wait = ms => new Promise(r => setTimeout(r, ms));
 
 async function precacheFonts(cache) {
   try {
-    const res = await fetch(FONT_CSS);
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 8000); // لا ننتظر خط جوجل أكثر من 8 ثوانٍ
+    const res = await fetch(FONT_CSS, { signal: ctl.signal });
+    clearTimeout(t);
     if (!res.ok) return;
     await cache.put(FONT_CSS, res.clone());
     const css = await res.text();
     const urls = [...css.matchAll(/url\((https:[^)]+)\)/g)].map(m => m[1]);
-    await Promise.all(urls.map(u => cache.add(fresh(u)).catch(() => {})));
+    await Promise.race([Promise.all(urls.map(u => cache.add(fresh(u)).catch(() => {}))), wait(10000)]);
   } catch (e) { /* لا إنترنت الآن: سيُخزَّن الخط عند أول فتح أونلاين */ }
 }
 
-/* ===== التثبيت: تخزين مسبق لكل شيء ===== */
+/* ===== التثبيت: ملفات الموقع فقط (سريع). ملفات PDF تُحمَّل بعده في الخلفية ===== */
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const app = await caches.open(APP_CACHE);
-    // كل ملف على حدة: غياب ملف لا يُفشل التثبيت كله
     await Promise.all(CORE.map(u => app.add(fresh(u)).catch(() => {})));
     await precacheFonts(app);
-
-    // ملفات PDF: نتحقق من كل ملف مع السيرفر (no-cache)،
-    // فلا يُنزَّل إلا الملف الجديد أو المعدَّل، وغير المتغير لا يُعاد تحميله
-    const pdf = await caches.open(PDF_CACHE);
-    await Promise.all(PDFS.map(async u => {
-      try {
-        const res = await fetch(u, { cache: 'no-cache' });
-        if (res.ok) await pdf.put(u, res);
-      } catch (e) { /* بدون إنترنت: نُبقي النسخة المحفوظة */ }
-    }));
-
     await self.skipWaiting();
   })());
 });
 
-/* ===== التفعيل: حذف النسخ القديمة من الموقع ومن ملفات PDF ===== */
+/* ===== تحميل ملفات PDF الناقصة فقط، 3 ملفات في المرة، وتكمل من حيث توقفت ===== */
+let pdfJob = null;
+function cacheMissingPdfs() {
+  if (pdfJob) return pdfJob; // لا نشغّل عمليتين معاً
+  pdfJob = (async () => {
+    const pdf = await caches.open(PDF_CACHE);
+    const missing = [];
+    for (const u of PDFS) if (!(await pdf.match(u))) missing.push(u);
+    let i = 0;
+    const worker = async () => {
+      while (i < missing.length) {
+        const u = missing[i++];
+        try {
+          const res = await fetch(u);
+          if (res.ok) await pdf.put(u, res);
+        } catch (e) { return; } // انقطع الاتصال: نتوقف ونكمل في المرة القادمة
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+  })().finally(() => { pdfJob = null; });
+  return pdfJob;
+}
+
+// الصفحة ترسل هذه الرسالة بعد اكتمال تحميلها، فلا تتنافس المحاضرات مع فتح الموقع
+self.addEventListener('message', event => {
+  if (event.data === 'cache-pdfs') event.waitUntil(cacheMissingPdfs());
+});
+
+/* ===== التفعيل: حذف النسخ القديمة ===== */
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
@@ -67,27 +87,46 @@ self.addEventListener('activate', event => {
   })());
 });
 
-/* ===== الجلب: من التخزين فوراً + تحديث في الخلفية عند وجود إنترنت ===== */
+/* ===== الجلب ===== */
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
-  if (!/^https?:$/.test(new URL(req.url).protocol)) return;
+  const url = new URL(req.url);
+  if (!/^https?:$/.test(url.protocol)) return;
 
-  // طلبات Range (يستخدمها عارض PDF): نخدمها من التخزين إن وُجد
+  // طلبات Range (يستخدمها عارض PDF): من التخزين إن وُجد
   if (req.headers.has('range')) {
     event.respondWith(caches.match(req.url, { ignoreVary: true }).then(r => r || fetch(req)));
+    return;
+  }
+  // ملفات PDF: من التخزين فوراً بدون إعادة تحميلها في الخلفية (تُحدَّث برفع PDF_VERSION)
+  if (url.origin === self.location.origin && url.pathname.includes('/pdfs/')) {
+    event.respondWith(pdfFetch(req));
     return;
   }
   event.respondWith(staleWhileRevalidate(event));
 });
 
+async function pdfFetch(req) {
+  const cache = await caches.open(PDF_CACHE);
+  const cached = await cache.match(req, { ignoreSearch: true, ignoreVary: true });
+  if (cached) return cached;
+  try {
+    const res = await fetch(req);
+    if (res.ok && res.status === 200) cache.put(req, res.clone());
+    return res;
+  } catch (e) {
+    return Response.error();
+  }
+}
+
+// ملفات الموقع: من التخزين فوراً + تحديث في الخلفية عند وجود إنترنت
 async function staleWhileRevalidate(event) {
   const req = event.request;
   const url = new URL(req.url);
-  const cache = await caches.open(url.pathname.includes('/pdfs/') ? PDF_CACHE : APP_CACHE);
+  const cache = await caches.open(APP_CACHE);
   const cached = await cache.match(req, { ignoreSearch: true, ignoreVary: true });
 
-  // ملفات الموقع نفسه: تجاوز كاش المتصفح لنحصل على أحدث نسخة
   const sameOrigin = url.origin === self.location.origin;
   const update = (sameOrigin ? fetch(url.href, { cache: 'no-cache' }) : fetch(req))
     .then(res => {
@@ -97,7 +136,7 @@ async function staleWhileRevalidate(event) {
     .catch(() => null);
 
   if (cached) {
-    event.waitUntil(update); // التحديث يكمل في الخلفية
+    event.waitUntil(update);
     return cached;
   }
   const res = await update;
