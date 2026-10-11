@@ -1,5 +1,5 @@
 
-/* Med13 — نظام المكافآت والمستويات والنسخ الاحتياطي */
+/* Med13 — المكافآت والمستويات والنسخ الاحتياطي */
 (function () {
   'use strict';
 
@@ -11,22 +11,19 @@
   function sessionCount() {
     if (typeof S === 'undefined' || !S.sessions) return 0;
     return Object.values(S.sessions)
-      .reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+      .reduce((sum, n) => sum + Math.max(0, Number(n) || 0), 0);
   }
 
   function readLedger() {
     try {
-      const data = JSON.parse(localStorage.getItem(REWARD_KEY) || 'null');
+      const x = JSON.parse(localStorage.getItem(REWARD_KEY) || 'null');
       if (
-        data &&
-        data.v === 1 &&
-        Array.isArray(data.taskRewards) &&
-        Array.isArray(data.taskFingerprints) &&
-        Array.isArray(data.pomoMilestones) &&
-        Number.isFinite(Number(data.total))
-      ) {
-        return data;
-      }
+        x && x.v === 1 &&
+        Array.isArray(x.taskRewards) &&
+        Array.isArray(x.taskFingerprints) &&
+        Array.isArray(x.pomoMilestones) &&
+        Number.isFinite(Number(x.total))
+      ) return x;
     } catch (_) {}
 
     return {
@@ -41,17 +38,17 @@
 
   let ledger = readLedger();
 
-  // لا نمنح مكافآت رجعية للجلسات القديمة عند تثبيت النظام لأول مرة.
+  // تسجيل عدد الجلسات القديمة كنقطة بداية، حتى لا تُمنح مكافآت رجعية.
   if (!Number.isFinite(Number(ledger.sessionBaseline))) {
     ledger.sessionBaseline = sessionCount();
   }
 
-  function saveLedger() {
+  function writeLedger() {
     try {
       localStorage.setItem(REWARD_KEY, JSON.stringify(ledger));
       return true;
     } catch (error) {
-      console.error('تعذر حفظ سجل المكافآت:', error);
+      console.error('تعذر حفظ المكافآت:', error);
       return false;
     }
   }
@@ -63,8 +60,8 @@
       .replace(/\s+/g, ' ');
   }
 
-  // نربط مكافأة المهمة بعنوانها أيضًا لتقليل التحايل بالحذف وإعادة الإنشاء.
-  // لذلك المهام المتكررة بالعنوان نفسه لن تعطي نجمة جديدة.
+  // منع تكرار مكافأة المهمة نفسها حتى لو حُذفت وأُعيد إنشاؤها.
+  // ملاحظة: المهمة الجديدة بالعنوان نفسه لن تمنح نجمة إضافية.
   function taskFingerprint(task) {
     return normalizeTitle(task.title);
   }
@@ -72,7 +69,7 @@
   function historicalStars() {
     if (typeof S === 'undefined' || !S.starsByDay) return 0;
     return Object.values(S.starsByDay)
-      .reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+      .reduce((sum, n) => sum + Math.max(0, Number(n) || 0), 0);
   }
 
   function totalStars() {
@@ -97,15 +94,13 @@
     if (
       ledger.taskRewards.includes(id) ||
       ledger.taskFingerprints.includes(fingerprint)
-    ) {
-      return;
-    }
+    ) return;
 
     ledger.taskRewards.push(id);
     ledger.taskFingerprints.push(fingerprint);
     ledger.total = Math.max(0, Number(ledger.total) || 0) + 1;
 
-    if (saveLedger()) refresh();
+    if (writeLedger()) refresh();
   }
 
   function onWorkSessionCompleted(event) {
@@ -114,12 +109,11 @@
 
     const baseline = Math.max(0, Number(ledger.sessionBaseline) || 0);
     const newlyCompleted = Math.max(0, count - baseline);
-    const earnedMilestones = Math.floor(newlyCompleted / 8);
-
+    const milestones = Math.floor(newlyCompleted / 8);
     let changed = false;
 
-    // كل معلم جديد يُسجل مرة واحدة فقط؛ كل معلم = 3 نجوم.
-    for (let milestone = 1; milestone <= earnedMilestones; milestone++) {
+    // كل 8 جلسات عمل مكتملة حديثًا = 3 نجوم، وكل معلم مرة واحدة فقط.
+    for (let milestone = 1; milestone <= milestones; milestone++) {
       if (!ledger.pomoMilestones.includes(milestone)) {
         ledger.pomoMilestones.push(milestone);
         ledger.total = Math.max(0, Number(ledger.total) || 0) + 3;
@@ -127,18 +121,18 @@
       }
     }
 
-    if (changed && saveLedger()) refresh();
+    if (changed && writeLedger()) refresh();
   }
 
   document.addEventListener('planner:task-completed', onTaskCompleted);
   document.addEventListener('med13:pomo-work-completed', onWorkSessionCompleted);
 
   function levelFor(stars) {
-    let level = 0;
+    let index = 0;
     for (let i = 0; i < THRESHOLDS.length; i++) {
-      if (stars >= THRESHOLDS[i]) level = i;
+      if (stars >= THRESHOLDS[i]) index = i;
     }
-    return level;
+    return index;
   }
 
   function renderLevel() {
@@ -146,14 +140,13 @@
     const index = levelFor(stars);
     const next = THRESHOLDS[index + 1];
     const previous = THRESHOLDS[index];
-
-    const progress = next
-      ? Math.max(0, Math.min(100, ((stars - previous) / (next - previous)) * 100))
+    const percent = next
+      ? Math.max(0, Math.min(100, (stars - previous) / (next - previous) * 100))
       : 100;
 
     const setText = (id, value) => {
-      const element = document.getElementById(id);
-      if (element) element.textContent = value;
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
     };
 
     setText('levelNumber', index + 1);
@@ -168,44 +161,44 @@
     );
 
     const bar = document.getElementById('levelBar');
-    if (bar) bar.style.width = progress + '%';
+    if (bar) bar.style.width = percent + '%';
+
+    const emblem = document.getElementById('levelEmblem');
+    if (emblem) emblem.className = `level-emblem level-${index + 1}`;
 
     const badges = document.getElementById('levelBadges');
     if (badges) {
       badges.innerHTML = '';
       THRESHOLDS.forEach((threshold, i) => {
         const badge = document.createElement('span');
-        badge.className =
-          'level-badge' +
+        badge.className = 'level-badge' +
           (i === index ? ' current' : i < index ? ' reached' : '');
         badge.textContent = String(i + 1);
         badge.title = `المستوى ${i + 1}: ${threshold} نجمة فما فوق`;
         badges.appendChild(badge);
       });
     }
-
-    const emblem = document.getElementById('levelEmblem');
-    if (emblem) {
-      emblem.className = `level-emblem level-${index + 1}`;
-    }
   }
 
   window.Med13Rewards = {
-    getData: () => JSON.parse(JSON.stringify(ledger)),
-    bonusTotal: () => Math.max(0, Number(ledger.total) || 0),
+    getData() {
+      return JSON.parse(JSON.stringify(ledger));
+    },
+
+    bonusTotal() {
+      return Math.max(0, Number(ledger.total) || 0);
+    },
+
     total: totalStars,
     render: renderLevel,
 
     setData(data) {
       if (
-        !data ||
-        data.v !== 1 ||
+        !data || data.v !== 1 ||
         !Array.isArray(data.taskRewards) ||
         !Array.isArray(data.pomoMilestones) ||
         !Number.isFinite(Number(data.total))
-      ) {
-        return false;
-      }
+      ) return false;
 
       ledger = {
         v: 1,
@@ -229,15 +222,14 @@
         total: Math.max(0, Math.floor(Number(data.total)))
       };
 
-      return saveLedger();
+      return writeLedger();
     }
   };
 
-  // النسخ الاحتياطي: بيانات التطبيق والمخطط وسجل المكافآت فقط.
   const status = document.getElementById('backupStatus');
   const fileInput = document.getElementById('importDataFile');
 
-  function showStatus(message) {
+  function say(message) {
     if (status) status.textContent = message;
   }
 
@@ -263,7 +255,6 @@
         );
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-
         link.href = url;
         link.download = 'med13-backup-' +
           new Date().toISOString().slice(0, 10) + '.json';
@@ -272,10 +263,9 @@
         link.click();
         link.remove();
         URL.revokeObjectURL(url);
-
-        showStatus('تم إنشاء النسخة الاحتياطية. احتفظي بها في مكان آمن.');
+        say('تم إنشاء النسخة الاحتياطية. احتفظي بها في مكان آمن.');
       } catch (error) {
-        showStatus('تعذر تصدير البيانات.');
+        say('تعذر تصدير البيانات.');
       }
     });
   }
@@ -315,14 +305,11 @@
           throw new Error('الملف غير صالح أو غير متوافق مع هذه النسخة.');
         }
 
-        const confirmed = confirm(
-          'سيتم استبدال بيانات الموقع الحالية بالبيانات الموجودة في النسخة. ' +
-          'هل تريدين المتابعة؟ يفضّل تصدير نسخة من بياناتك الحالية أولًا.'
-        );
+        if (!confirm(
+          'سيتم استبدال بيانات Med13 الحالية بالبيانات الموجودة في النسخة. ' +
+          'هل تريدين المتابعة؟ يُفضّل تصدير نسخة من بياناتك الحالية أولًا.'
+        )) return;
 
-        if (!confirmed) return;
-
-        // حفظ نسخة من القيم الحالية في الذاكرة للرجوع عند فشل الاستيراد.
         const keys = [SITE_KEY, PLANNER_KEY, REWARD_KEY];
         const previous = {};
         keys.forEach(key => {
@@ -338,13 +325,13 @@
             if (previous[key] === null) localStorage.removeItem(key);
             else localStorage.setItem(key, previous[key]);
           });
-          throw new Error('تعذر حفظ البيانات؛ أُعيدت القيم السابقة قدر الإمكان.');
+          throw new Error('تعذر حفظ النسخة؛ أُعيدت القيم السابقة قدر الإمكان.');
         }
 
-        showStatus('تم الاستيراد. جارٍ إعادة تحميل الموقع.');
+        say('تم الاستيراد. جارٍ إعادة تحميل الموقع.');
         location.reload();
       } catch (error) {
-        showStatus(error.message || 'تعذر استيراد الملف.');
+        say(error.message || 'تعذر استيراد الملف.');
       } finally {
         fileInput.value = '';
       }
