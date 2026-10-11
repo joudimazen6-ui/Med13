@@ -306,6 +306,9 @@ if ('serviceWorker' in navigator) {
       setTimeout(go, 4000);
       window.addEventListener('online', go);
     });
+
+    <script data-goatcounter="https://joudi.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
   });
 }
 
