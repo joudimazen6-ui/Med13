@@ -1,5 +1,5 @@
 
-/* Med13 — عرض النجوم دون احتساب مكافآت مكررة */
+/* Med13 — عرض النجوم التاريخية والمكافآت الجديدة دون تكرار */
 (function () {
   'use strict';
 
@@ -17,26 +17,24 @@
     try {
       if (typeof S === 'undefined' || !S) return;
       if (!S.starsByDay) S.starsByDay = {};
+      if (!S.sessions) S.sessions = {};
 
-      // نحافظ على النجوم التاريخية كما هي، ولا نضيف نجومًا من عدد الجلسات هنا.
-      const historicalStars = Object.values(S.starsByDay)
-        .reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+      // لا نضيف نجومًا من الجلسات هنا؛ مكافآت الجلسات يحسبها levels-backup.js.
+      const oldStars = Object.values(S.starsByDay)
+        .reduce((sum, n) => sum + Math.max(0, Number(n) || 0), 0);
 
-      const bonusStars =
-        window.Med13Rewards &&
-        typeof window.Med13Rewards.bonusTotal === 'function'
-          ? Math.max(0, Number(window.Med13Rewards.bonusTotal()) || 0)
-          : 0;
+      const bonusStars = window.Med13Rewards
+        ? Math.max(0, Number(window.Med13Rewards.bonusTotal()) || 0)
+        : 0;
 
-      const totalStars = historicalStars + bonusStars;
-      renderStars(totalStars);
+      renderStars(oldStars + bonusStars);
 
       if (window.Med13Rewards &&
           typeof window.Med13Rewards.render === 'function') {
         window.Med13Rewards.render();
       }
     } catch (error) {
-      console.error('Med13 gamification error:', error);
+      console.error('Med13 stars error:', error);
     }
   }
 
@@ -52,9 +50,7 @@
     for (let i = 0; i < slots; i++) {
       const active = i < shown;
       const pop = active && isNew && i === shown - 1 ? ' pop' : '';
-      html += `<svg class="star-ic${active ? '' : ' off'}${pop}">
-        <use href="#i-star"></use>
-      </svg>`;
+      html += `<svg class="star-ic${active ? '' : ' off'}${pop}" aria-hidden="true"><use href="#i-star"></use></svg>`;
     }
 
     if (total > MAX_STARS_SHOWN) {
@@ -68,8 +64,7 @@
     const countEl = document.getElementById('starsCount');
     if (countEl) countEl.textContent = `${total} نجمة`;
 
-    // عرض تقدم جلسات اليوم للمعلومة فقط؛ لا يمنح هذا القسم أي نجوم.
-    const todaySessions = Number(S.sessions?.[localDayKey()]) || 0;
+    const todaySessions = Number(S.sessions[localDayKey()]) || 0;
     const progress = todaySessions % SESSIONS_PER_REWARD;
     const bar = document.getElementById('starBar');
     const note = document.getElementById('starNote');
@@ -81,7 +76,7 @@
     if (note) {
       note.textContent =
         `جلسات التركيز المكتملة اليوم: ${todaySessions}. ` +
-        `مكافأة التركيز تُحتسب كل 8 جلسات عمل مكتملة حديثًا.`;
+        'مكافأة التركيز تُحتسب لكل 8 جلسات عمل مكتملة حديثًا.';
     }
 
     const log = document.getElementById('starLog');
@@ -108,13 +103,12 @@
     }
   }
 
-  // إتاحتها لبقية ملفات الموقع.
+  // إتاحة الدالة لبقية ملفات الموقع.
   window.updateStars = updateStars;
 
   document.addEventListener('DOMContentLoaded', updateStars);
   document.addEventListener('planner:task-completed', updateStars);
   document.addEventListener('med13:pomo-work-completed', updateStars);
 
-  // تحديث العرض عند جاهزية الصفحة إذا كان DOM قد اكتمل مسبقًا.
   if (document.readyState !== 'loading') updateStars();
 })();
