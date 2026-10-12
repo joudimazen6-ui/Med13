@@ -1,342 +1,46 @@
-
-/* Med13 — المكافآت والمستويات والنسخ الاحتياطي */
-(function () {
-  'use strict';
-
-  const REWARD_KEY = 'student-rewards-v1';
-  const PLANNER_KEY = 'student-planner-v1';
-  const SITE_KEY = 'student-site-v1';
-  const THRESHOLDS = [0, 20, 50, 90, 140, 200];
-
-  function sessionCount() {
-    if (typeof S === 'undefined' || !S.sessions) return 0;
-    return Object.values(S.sessions)
-      .reduce((sum, n) => sum + Math.max(0, Number(n) || 0), 0);
-  }
-
-  function readLedger() {
-    try {
-      const x = JSON.parse(localStorage.getItem(REWARD_KEY) || 'null');
-      if (
-        x && x.v === 1 &&
-        Array.isArray(x.taskRewards) &&
-        Array.isArray(x.taskFingerprints) &&
-        Array.isArray(x.pomoMilestones) &&
-        Number.isFinite(Number(x.total))
-      ) return x;
-    } catch (_) {}
-
-    return {
-      v: 1,
-      taskRewards: [],
-      taskFingerprints: [],
-      pomoMilestones: [],
-      total: 0,
-      sessionBaseline: sessionCount()
-    };
-  }
-
-  let ledger = readLedger();
-
-  // تسجيل عدد الجلسات القديمة كنقطة بداية، حتى لا تُمنح مكافآت رجعية.
-  if (!Number.isFinite(Number(ledger.sessionBaseline))) {
-    ledger.sessionBaseline = sessionCount();
-  }
-
-  function writeLedger() {
-    try {
-      localStorage.setItem(REWARD_KEY, JSON.stringify(ledger));
-      return true;
-    } catch (error) {
-      console.error('تعذر حفظ المكافآت:', error);
-      return false;
-    }
-  }
-
-  function normalizeTitle(title) {
-    return String(title || '')
-      .trim()
-      .toLocaleLowerCase()
-      .replace(/\s+/g, ' ');
-  }
-
-  // منع تكرار مكافأة المهمة نفسها حتى لو حُذفت وأُعيد إنشاؤها.
-  // ملاحظة: المهمة الجديدة بالعنوان نفسه لن تمنح نجمة إضافية.
-  function taskFingerprint(task) {
-    return normalizeTitle(task.title);
-  }
-
-  function historicalStars() {
-    if (typeof S === 'undefined' || !S.starsByDay) return 0;
-    return Object.values(S.starsByDay)
-      .reduce((sum, n) => sum + Math.max(0, Number(n) || 0), 0);
-  }
-
-  function totalStars() {
-    return historicalStars() + Math.max(0, Number(ledger.total) || 0);
-  }
-
-  function refresh() {
-    if (typeof window.updateStars === 'function') {
-      window.updateStars();
-    } else {
-      renderLevel();
-    }
-  }
-
-  function onTaskCompleted(event) {
-    const task = event.detail || {};
-    if (!task.first || !task.id || !task.title) return;
-
-    const id = String(task.id);
-    const fingerprint = taskFingerprint(task);
-
-    if (
-      ledger.taskRewards.includes(id) ||
-      ledger.taskFingerprints.includes(fingerprint)
-    ) return;
-
-    ledger.taskRewards.push(id);
-    ledger.taskFingerprints.push(fingerprint);
-    ledger.total = Math.max(0, Number(ledger.total) || 0) + 1;
-
-    if (writeLedger()) refresh();
-  }
-
-  function onWorkSessionCompleted(event) {
-    const count = Number(event.detail && event.detail.count);
-    if (!Number.isFinite(count)) return;
-
-    const baseline = Math.max(0, Number(ledger.sessionBaseline) || 0);
-    const newlyCompleted = Math.max(0, count - baseline);
-    const milestones = Math.floor(newlyCompleted / 8);
-    let changed = false;
-
-    // كل 8 جلسات عمل مكتملة حديثًا = 3 نجوم، وكل معلم مرة واحدة فقط.
-    for (let milestone = 1; milestone <= milestones; milestone++) {
-      if (!ledger.pomoMilestones.includes(milestone)) {
-        ledger.pomoMilestones.push(milestone);
-        ledger.total = Math.max(0, Number(ledger.total) || 0) + 3;
-        changed = true;
-      }
-    }
-
-    if (changed && writeLedger()) refresh();
-  }
-
-  document.addEventListener('planner:task-completed', onTaskCompleted);
-  document.addEventListener('med13:pomo-work-completed', onWorkSessionCompleted);
-
-  function levelFor(stars) {
-    let index = 0;
-    for (let i = 0; i < THRESHOLDS.length; i++) {
-      if (stars >= THRESHOLDS[i]) index = i;
-    }
-    return index;
-  }
-
-  function renderLevel() {
-    const stars = totalStars();
-    const index = levelFor(stars);
-    const next = THRESHOLDS[index + 1];
-    const previous = THRESHOLDS[index];
-    const percent = next
-      ? Math.max(0, Math.min(100, (stars - previous) / (next - previous) * 100))
-      : 100;
-
-    const setText = (id, value) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = value;
-    };
-
-    setText('levelNumber', index + 1);
-    setText(
-      'levelCaption',
-      index === 5 ? 'وصلت إلى أعلى مستوى!' : `تابع التقدم نحو المستوى ${index + 2}`
-    );
-    setText('levelStarText', `${stars} نجمة إجمالًا`);
-    setText(
-      'levelNextText',
-      next ? `باقي ${next - stars} نجمة للمستوى التالي` : 'أعلى مستوى'
-    );
-
-    const bar = document.getElementById('levelBar');
-    if (bar) bar.style.width = percent + '%';
-
-    const emblem = document.getElementById('levelEmblem');
-    if (emblem) emblem.className = `level-emblem level-${index + 1}`;
-
-    const badges = document.getElementById('levelBadges');
-    if (badges) {
-      badges.innerHTML = '';
-      THRESHOLDS.forEach((threshold, i) => {
-        const badge = document.createElement('span');
-        badge.className = 'level-badge' +
-          (i === index ? ' current' : i < index ? ' reached' : '');
-        badge.textContent = String(i + 1);
-        badge.title = `المستوى ${i + 1}: ${threshold} نجمة فما فوق`;
-        badges.appendChild(badge);
-      });
-    }
-  }
-
-  window.Med13Rewards = {
-    getData() {
-      return JSON.parse(JSON.stringify(ledger));
-    },
-
-    bonusTotal() {
-      return Math.max(0, Number(ledger.total) || 0);
-    },
-
-    total: totalStars,
-    render: renderLevel,
-
-    setData(data) {
-      if (
-        !data || data.v !== 1 ||
-        !Array.isArray(data.taskRewards) ||
-        !Array.isArray(data.pomoMilestones) ||
-        !Number.isFinite(Number(data.total))
-      ) return false;
-
-      ledger = {
-        v: 1,
-        taskRewards: [...new Set(data.taskRewards.map(String))],
-        taskFingerprints: [
-          ...new Set(
-            (Array.isArray(data.taskFingerprints) ? data.taskFingerprints : [])
-              .map(String)
-          )
-        ],
-        pomoMilestones: [
-          ...new Set(
-            data.pomoMilestones
-              .map(Number)
-              .filter(n => Number.isInteger(n) && n > 0)
-          )
-        ],
-        sessionBaseline: Number.isFinite(Number(data.sessionBaseline))
-          ? Number(data.sessionBaseline)
-          : sessionCount(),
-        total: Math.max(0, Math.floor(Number(data.total)))
-      };
-
-      return writeLedger();
-    }
-  };
-
-  const status = document.getElementById('backupStatus');
-  const fileInput = document.getElementById('importDataFile');
-
-  function say(message) {
-    if (status) status.textContent = message;
-  }
-
-  const exportButton = document.getElementById('exportData');
-  if (exportButton) {
-    exportButton.addEventListener('click', () => {
-      try {
-        const backup = {
-          format: 'med13-backup',
-          version: 1,
-          createdAt: new Date().toISOString(),
-          site: JSON.parse(localStorage.getItem(SITE_KEY) || '{}'),
-          planner: JSON.parse(
-            localStorage.getItem(PLANNER_KEY) ||
-            '{"v":1,"tasks":[],"rejected":[]}'
-          ),
-          rewards: JSON.parse(localStorage.getItem(REWARD_KEY) || 'null') || ledger
-        };
-
-        const blob = new Blob(
-          [JSON.stringify(backup, null, 2)],
-          { type: 'application/json' }
-        );
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'med13-backup-' +
-          new Date().toISOString().slice(0, 10) + '.json';
-
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-        say('تم إنشاء النسخة الاحتياطية. احتفظي بها في مكان آمن.');
-      } catch (error) {
-        say('تعذر تصدير البيانات.');
-      }
-    });
-  }
-
-  const importButton = document.getElementById('importDataBtn');
-  if (importButton && fileInput) {
-    importButton.addEventListener('click', () => fileInput.click());
-  }
-
-  if (fileInput) {
-    fileInput.addEventListener('change', async () => {
-      const file = fileInput.files && fileInput.files[0];
-      if (!file) return;
-
-      try {
-        if (file.size > 5 * 1024 * 1024) {
-          throw new Error('حجم الملف أكبر من الحد المسموح (5 ميغابايت).');
-        }
-
-        const backup = JSON.parse(await file.text());
-
-        if (
-          !backup ||
-          backup.format !== 'med13-backup' ||
-          backup.version !== 1 ||
-          !backup.site ||
-          typeof backup.site !== 'object' ||
-          Array.isArray(backup.site) ||
-          !backup.planner ||
-          !Array.isArray(backup.planner.tasks) ||
-          !backup.rewards ||
-          backup.rewards.v !== 1 ||
-          !Array.isArray(backup.rewards.taskRewards) ||
-          !Array.isArray(backup.rewards.pomoMilestones) ||
-          !Number.isFinite(Number(backup.rewards.total))
-        ) {
-          throw new Error('الملف غير صالح أو غير متوافق مع هذه النسخة.');
-        }
-
-        if (!confirm(
-          'سيتم استبدال بيانات Med13 الحالية بالبيانات الموجودة في النسخة. ' +
-          'هل تريدين المتابعة؟ يُفضّل تصدير نسخة من بياناتك الحالية أولًا.'
-        )) return;
-
-        const keys = [SITE_KEY, PLANNER_KEY, REWARD_KEY];
-        const previous = {};
-        keys.forEach(key => {
-          previous[key] = localStorage.getItem(key);
-        });
-
-        try {
-          localStorage.setItem(SITE_KEY, JSON.stringify(backup.site));
-          localStorage.setItem(PLANNER_KEY, JSON.stringify(backup.planner));
-          localStorage.setItem(REWARD_KEY, JSON.stringify(backup.rewards));
-        } catch (error) {
-          keys.forEach(key => {
-            if (previous[key] === null) localStorage.removeItem(key);
-            else localStorage.setItem(key, previous[key]);
-          });
-          throw new Error('تعذر حفظ النسخة؛ أُعيدت القيم السابقة قدر الإمكان.');
-        }
-
-        say('تم الاستيراد. جارٍ إعادة تحميل الموقع.');
-        location.reload();
-      } catch (error) {
-        say(error.message || 'تعذر استيراد الملف.');
-      } finally {
-        fileInput.value = '';
-      }
-    });
-  }
-
-  renderLevel();
+/* Med13 reward ledger, geometric levels, and local JSON backup/restore. */
+(function(){'use strict';
+ const REWARD_KEY='student-rewards-v1', PLANNER_KEY='student-planner-v1';
+ const THRESHOLDS=[0,20,50,90,140,200];
+ function read(){
+   const empty={v:1,taskRewards:[],taskFingerprints:[],pomoMilestones:[],sessionBaseline:null,total:0};
+   try{
+     const x=JSON.parse(localStorage.getItem(REWARD_KEY)||'null');
+     if(!x||x.v!==1||!Array.isArray(x.taskRewards)||!Array.isArray(x.pomoMilestones)||!Number.isFinite(Number(x.total)))return empty;
+     return {...x,
+       taskRewards:[...new Set(x.taskRewards.map(String))],
+       taskFingerprints:Array.isArray(x.taskFingerprints)?[...new Set(x.taskFingerprints.map(String))]:[],
+       pomoMilestones:[...new Set(x.pomoMilestones.map(Number).filter(n=>Number.isInteger(n)&&n>0))],
+       sessionBaseline:Number.isFinite(x.sessionBaseline)&&x.sessionBaseline!==null?x.sessionBaseline:null,
+       total:Math.max(0,Math.floor(Number(x.total)))
+     };
+   }catch(e){return empty;}
+ }
+ let ledger=read();
+ function getCompletedSessionCount(){
+   if(typeof S==='undefined'||!S.sessions)return 0;
+   return Object.values(S.sessions).reduce((n,v)=>n+Math.max(0,Number(v)||0),0);
+ }
+ // لا نمنح مكافآت بأثر رجعي للجلسات التي أُنجزت قبل تفعيل سجل المكافآت.
+ if(ledger.sessionBaseline===null){ledger.sessionBaseline=getCompletedSessionCount();try{localStorage.setItem(REWARD_KEY,JSON.stringify(ledger));}catch(e){}}
+ function write(){try{localStorage.setItem(REWARD_KEY,JSON.stringify(ledger));return true;}catch(e){return false;}}
+ function fingerprint(d){return String(d.title||'').trim().toLocaleLowerCase().replace(/\s+/g,' ');}
+ function currentLegacy(){if(typeof S==='undefined'||!S.starsByDay)return 0;return Object.values(S.starsByDay).reduce((n,x)=>n+(Number(x)||0),0);}
+ function total(){return currentLegacy()+(Number(ledger.total)||0);}
+ function onTask(e){const d=e.detail||{};if(!d.first||!d.id)return;const id=String(d.id),fp=fingerprint(d);if(ledger.taskRewards.includes(id)||ledger.taskFingerprints.includes(fp))return;ledger.taskRewards.push(id);ledger.taskFingerprints.push(fp);ledger.total+=1;write();if(typeof updateStars==='function')updateStars();renderLevel();}
+ function onPomo(e){const count=Number(e.detail&&e.detail.count);if(!Number.isFinite(count))return;const newSessions=Math.max(0,count-(Number(ledger.sessionBaseline)||0));if(newSessions<8)return;const milestones=Math.floor(newSessions/8);let changed=false;for(let n=1;n<=milestones;n++){if(!ledger.pomoMilestones.includes(n)){ledger.pomoMilestones.push(n);ledger.total+=3;changed=true;}}if(changed){write();if(typeof updateStars==='function')updateStars();renderLevel();}}
+ document.addEventListener('planner:task-completed',onTask);
+ document.addEventListener('med13:pomo-work-completed',onPomo);
+ function levelFor(n){let idx=0;for(let i=0;i<THRESHOLDS.length;i++)if(n>=THRESHOLDS[i])idx=i;return idx;}
+ function renderLevel(){const n=total(),idx=levelFor(n),next=THRESHOLDS[idx+1],prev=THRESHOLDS[idx],pct=next?Math.max(0,Math.min(100,(n-prev)/(next-prev)*100)):100;const put=(id,v)=>{const x=document.getElementById(id);if(x)x.textContent=v;};put('levelNumber',idx+1);put('levelCaption',idx===5?'وصلت إلى أعلى مستوى!':`تابع التقدم نحو المستوى ${idx+2}`);put('levelStarText',`${n} نجمة إجمالاً`);put('levelNextText',next?`باقي ${next-n} نجمة للمستوى التالي`:'أعلى مستوى');const bar=document.getElementById('levelBar');if(bar)bar.style.width=pct+'%';const emblem=document.getElementById('levelEmblem');if(emblem){emblem.className='level-emblem level-'+(idx+1);const svg=emblem.querySelector('svg');if(svg){const variants=[`<path d="M50 8 86 29 86 71 50 92 14 71 14 29Z M50 8V92 M14 29 86 71 M86 29 14 71"/><circle cx="50" cy="50" r="22"/>`,`<path d="M50 5 91 29 91 71 50 95 9 71 9 29Z M50 5 9 71 91 71 50 5 9 29 91 29 50 95"/><circle cx="50" cy="50" r="18"/>`,`<path d="M50 5 88 18 95 50 75 86 50 95 25 86 5 50 12 18Z M12 18 75 86 M88 18 25 86 M5 50h90 M50 5v90"/><circle cx="50" cy="50" r="27"/><circle cx="50" cy="50" r="12"/>`,`<path d="M50 4 72 18 92 34 86 61 72 82 50 96 28 82 8 61 2 34 28 18Z M28 18 72 82 M72 18 28 82 M2 34 92 61 M92 34 8 61"/><circle cx="50" cy="50" r="31"/><path d="M50 19 77 35 77 65 50 81 23 65 23 35Z"/>`,`<path d="M50 3 68 14 86 14 86 32 97 50 86 68 86 86 68 86 50 97 32 86 14 86 14 68 3 50 14 32 14 14 32 14Z M50 3v94 M3 50h94 M14 14l72 72 M86 14 14 86"/><circle cx="50" cy="50" r="34"/><circle cx="50" cy="50" r="20"/>`,`<path d="M50 2 64 10 80 8 87 23 98 34 91 50 98 66 87 77 80 92 64 90 50 98 36 90 20 92 13 77 2 66 9 50 2 34 13 23 20 8 36 10Z M50 2v96 M2 34l96 32 M98 34 2 66 M20 8l60 84 M80 8 20 92"/><circle cx="50" cy="50" r="36"/><circle cx="50" cy="50" r="25"/><circle cx="50" cy="50" r="10"/>`];svg.innerHTML=variants[idx];}}
+ const badges=document.getElementById('levelBadges');if(badges){badges.innerHTML='';for(let i=0;i<6;i++){const b=document.createElement('span');b.className='level-badge'+(i===idx?' current':i<idx?' reached':'');b.textContent=String(i+1);b.title=`المستوى ${i+1}: ${THRESHOLDS[i]} نجمة فما فوق`;badges.appendChild(b);}}
+ }
+ window.Med13Rewards={getData:()=>JSON.parse(JSON.stringify(ledger)),bonusTotal:()=>Number(ledger.total)||0,setData(obj){if(!obj||obj.v!==1||!Array.isArray(obj.taskRewards)||!Array.isArray(obj.pomoMilestones)||!Number.isFinite(Number(obj.total)))return false;ledger={v:1,taskRewards:[...new Set(obj.taskRewards.map(String))],taskFingerprints:Array.isArray(obj.taskFingerprints)?[...new Set(obj.taskFingerprints.map(String))]:[],pomoMilestones:[...new Set(obj.pomoMilestones.map(Number).filter(n=>Number.isInteger(n)&&n>0))],sessionBaseline:Number.isFinite(obj.sessionBaseline)&&obj.sessionBaseline!==null?obj.sessionBaseline:getCompletedSessionCount(),total:Math.max(0,Math.floor(Number(obj.total)))};return write();},render:renderLevel,total};
+ // Backup covers app state, planner, and reward ledger. Import defaults to explicit replace confirmation.
+ const status=document.getElementById('backupStatus'), file=document.getElementById('importDataFile');
+ function say(s){if(status)status.textContent=s;}
+ document.getElementById('exportData')?.addEventListener('click',()=>{try{const data={format:'med13-backup',version:1,createdAt:new Date().toISOString(),site:JSON.parse(localStorage.getItem('student-site-v1')||'{}'),planner:JSON.parse(localStorage.getItem(PLANNER_KEY)||'{"v":1,"tasks":[],"rejected":[]}'),rewards:read()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='med13-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);say('تم إنشاء ملف النسخة الاحتياطية. احتفظ به في مكان آمن.');}catch(e){say('تعذر تصدير البيانات.');}});
+ document.getElementById('importDataBtn')?.addEventListener('click',()=>file?.click());
+ file?.addEventListener('change',async()=>{const f=file.files&&file.files[0];if(!f)return;try{if(f.size>5*1024*1024)throw Error('الملف أكبر من الحد المسموح.');const d=JSON.parse(await f.text());if(!d||d.format!=='med13-backup'||d.version!==1||!d.site||typeof d.site!=='object'||Array.isArray(d.site)||!d.planner||!Array.isArray(d.planner.tasks)||!d.rewards||d.rewards.v!==1||!Array.isArray(d.rewards.taskRewards)||!Array.isArray(d.rewards.pomoMilestones)||!Number.isFinite(Number(d.rewards.total)))throw Error('بنية النسخة غير صالحة أو غير متوافقة.');if(!confirm('سيتم استبدال بيانات Med13 المحلية بالبيانات الموجودة في النسخة. هل أنشأت نسخة احتياطية من بياناتك الحالية وتريد المتابعة؟'))return;localStorage.setItem('student-site-v1',JSON.stringify(d.site));localStorage.setItem(PLANNER_KEY,JSON.stringify(d.planner));localStorage.setItem(REWARD_KEY,JSON.stringify(d.rewards));say('تم استيراد النسخة. سيُعاد تحميل الموقع لتطبيق البيانات.');setTimeout(()=>location.reload(),700);}catch(e){say(e.message||'تعذر استيراد الملف. لم يتم تطبيق النسخة.');}finally{file.value='';}});
+ renderLevel();
 })();
