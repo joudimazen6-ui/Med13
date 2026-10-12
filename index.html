@@ -57,6 +57,7 @@
   <div class="brand"><span class="logo"><svg><use href="#i-pulse"/></svg></span><b>med13</b></div>
   <nav id="nav" aria-label="التنقل">
     <button data-go="home" class="active"><svg><use href="#i-home"/></svg><span>الرئيسية</span></button>
+    <button data-go="plan"><svg><use href="#i-steth"/></svg><span>الخطة الدراسية</span></button>
     <button data-go="pomo"><svg><use href="#i-timer"/></svg><span>بومودورو</span></button>
     <button data-go="lectures"><svg><use href="#i-book"/></svg><span>المحاضرات</span></button>
     <button data-go="week"><svg><use href="#i-cal"/></svg><span>المخطط</span></button>
@@ -86,6 +87,10 @@
       <p class="countdown-note" id="countdown-status"></p>
     </div>
 
+    <div class="stats">
+      <div class="stat"><svg class="ic teal"><use href="#i-steth"/></svg><div><b id="stPct">0%</b><span>إنجاز الخطة</span></div></div>
+    </div>
+
     <!-- نجومي: نجمة لكل 8 جلسات -->
     <div class="card stars-card">
       <div class="progress-head"><b>⭐ نجومي</b><span id="starsCount">0 نجمة</span></div>
@@ -107,8 +112,40 @@
       <div class="guide-icon">⭐</div>
       <div class="guide-text">
         <strong>ما هي النجوم وكيف أحصل عليها؟</strong>
-        <p>تحصل على النجوم من تُحتسب النجوم التاريخية المحفوظة لديك، وتكسب نجمة عند إكمال مهمة جديدة في المخطط الأسبوعي. كما تحصل على 3 نجوم مكافأة لكل 8 جلسات عمل مكتملة جديدة. تُحفظ المكافآت محلياً على جهازك، وتُعرض مستوياتك وفق مجموع النجوم.</p>
+        <p>تحصل على النجوم من نظامك السابق لجلسات التركيز، وتكسب نجمة إضافية عند إكمال مهمة جديدة في المخطط الأسبوعي. كما تحصل على 3 نجوم مكافأة لكل 8 جلسات عمل مكتملة جديدة. تُحفظ المكافآت محلياً على جهازك، وتُعرض مستوياتك وفق مجموع النجوم.</p>
       </div>
+    </div>
+  </section>
+
+  <!-- الخطة الدراسية -->
+  <section id="plan" class="panel">
+    <h2 class="title"><svg><use href="#i-steth"/></svg>الخطة الدراسية</h2>
+
+    <div class="study-plan-container">
+
+      <!-- بطاقة إرشادية -->
+      <div class="guide-card">
+        <div class="guide-icon">💡</div>
+        <div class="guide-text">
+          <strong>كيف تستفيد من هذا القسم بكفاءة؟</strong>
+          <p>أضف قائمة المحاضرات اليومية أدناه وعلّم عليها فور إنهائها لمتابعة نسبة إنجازك أولاً بأول!</p>
+        </div>
+      </div>
+
+
+    </div>
+
+    <div class="card">
+      <div class="progress-head"><b>نسبة الإنجاز</b><span id="pctText">0% (0 من 0)</span></div>
+      <div class="bar"><i id="barFill"></i></div>
+    </div>
+
+    <div class="card">
+      <div class="add-row">
+        <input id="taskInput" type="text" placeholder="أضف محاضرة أو مهمة، مثل: مراجعة محاضرة 3 تشريح">
+        <button id="taskAdd" class="btn primary">إضافة</button>
+      </div>
+      <ul id="taskList" class="tasks"></ul>
     </div>
   </section>
 
