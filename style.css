@@ -233,19 +233,12 @@ input::placeholder,textarea::placeholder{color:#778ba5}.btn.ghost{background:#21
 @media(max-width:420px){.pl-card{padding:12px}.pl-day small{font-size:9px}.pl-day b{font-size:15px}.pl-icon{height:36px;width:36px}.pl-weeknav{grid-template-columns:36px 1fr 36px;gap:5px}.pl-task{padding:10px;gap:8px}.pl-acts .pl-link{font-size:12px;padding-inline:4px}.level-progress-head{font-size:12px}}
 
 
-/* Med13 v19 — Pomodoro timer number contrast fix */
-#timerDisplay,
-#timer-display,
-#timerTime,
-#timer-time,
-#timeDisplay,
-#time-display,
-#pomodoroTimer,
-#pomodoro-timer,
-#timerValue,
-#timer-value {
+
+/* Med13 v19 — تحسين وضوح أرقام مؤقت بومودورو */
+.ring-center b {
   color: #EAF2FF !important;
   -webkit-text-fill-color: #EAF2FF !important;
-  opacity: 1 !important;
+  opacity: 1;
+  text-shadow: 0 0 12px rgba(101, 184, 212, 0.12);
 }
 
