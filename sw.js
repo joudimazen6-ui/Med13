@@ -11,6 +11,8 @@ const CORE = [
   'config.js',
   'script.js',
   'gamification.js',
+  'planner.js',
+  'levels-backup.js',
   'manifest.json',
   'icons/icon-192.png',
   'icons/icon-512.png'
