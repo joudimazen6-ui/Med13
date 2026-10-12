@@ -94,7 +94,7 @@ function tickCountdown() {
   hoursEl.textContent = Math.floor(diff % 86400000 / 3600000);
   minutesEl.textContent = Math.floor(diff % 3600000 / 60000);
   secondsEl.textContent = Math.floor(diff % 60000 / 1000);
-  countdownStatus.textContent = ' المتبقي على بداية الامتحانات....... قوم ادروووس';
+  countdownStatus.textContent = ' قوم ادرووووووس';
 }
 tickCountdown();
 setInterval(tickCountdown, 1000);
