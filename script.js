@@ -52,7 +52,7 @@ function renderGreeting() {
   let greeting;
 
   if (h >= 0 && h < 5) {
-    greeting = 'طاب مساؤك';
+    greeting = 'من طلب العلا سهر الليالي';
   } else if (h >= 5 && h < 12) {
     greeting = 'صباح الخير';
   } else if (h >= 12 && h < 17) {
@@ -94,7 +94,7 @@ function tickCountdown() {
   hoursEl.textContent = Math.floor(diff % 86400000 / 3600000);
   minutesEl.textContent = Math.floor(diff % 3600000 / 60000);
   secondsEl.textContent = Math.floor(diff % 60000 / 1000);
-  countdownStatus.textContent = 'المتبقي على بداية الامتحانات';
+  countdownStatus.textContent = ' المتبقي على بداية الامتحانات....... قوم ادروووس';
 }
 tickCountdown();
 setInterval(tickCountdown, 1000);
