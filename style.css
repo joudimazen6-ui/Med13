@@ -110,7 +110,7 @@ label input{margin-top:6px;color:var(--ink);font-size:16px}
 .rest .ring-fg{stroke:var(--coral)}
 .ring-center{position:absolute;inset:0;display:grid;place-content:center}
 .ring-center span{color:var(--muted)}
-.ring-center b{font-size:56px;color:var(--navy);line-height:1.1;font-variant-numeric:tabular-nums}
+.ring-center b{font-size:56px;color:#F2F7FF;line-height:1.1;font-variant-numeric:tabular-nums}
 .pomo-set{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:360px;margin:22px auto 10px;text-align:start}
 
 /* المحاضرات */
