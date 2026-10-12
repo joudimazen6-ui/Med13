@@ -98,7 +98,7 @@ function drawPomo() {
   $('#pomoMode').textContent = mode === 'work' ? 'وقت العمل' : 'وقت الاستراحة';
   $('#ringFg').style.strokeDashoffset = CIRC * (1 - left / total);
   $('#pomo').classList.toggle('rest', mode === 'rest');
-  document.title = timer ? `${$('#pomoTime').textContent} • med13` : 'med13';
+  document.title = timer ? `${$('#pomoTime').textContent} • Med13` : 'Med13';
 }
 function savePomo() { S.pomo = { mode, left, running: !!timer, endAt: timer ? endAt : 0 }; save(); }
 // استرجاع المؤقت بعد إغلاق الموقع: يكمل إن كان شغالاً، أو يرجع متوقفاً مؤقتاً كما تركه
