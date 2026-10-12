@@ -231,3 +231,18 @@ input::placeholder,textarea::placeholder{color:#778ba5}.btn.ghost{background:#21
 .level-card{margin-top:16px;background:radial-gradient(circle at 90% 15%,#18394a 0,#111c2e 48%);overflow:hidden}.level-top{display:flex;align-items:center;justify-content:space-between;gap:18px}.eyebrow{color:#69d9cb;font-size:13px}.level-top h2{font-size:25px;color:#eef5ff}.level-top p:last-child{color:#9aabc2;font-size:14px}.level-emblem{width:104px;height:104px;display:grid;place-items:center;flex:none;border-radius:24px;background:#0c192a;border:1px solid #345067}.level-emblem svg{width:88px;height:88px;fill:none;stroke:#4bd5c3;stroke-width:1.5;stroke-linejoin:round}.level-emblem circle{fill:#d7b86e;stroke:#d7b86e}.level-2 svg{stroke-width:1.8}.level-3 svg,.level-4 svg{stroke:#69dcca;stroke-width:1.4}.level-4 circle,.level-5 circle,.level-6 circle{fill:none;stroke:#d8b76e}.level-5 svg,.level-6 svg{stroke:#d8b76e;stroke-width:1.2}.level-progress-head{display:flex;justify-content:space-between;gap:10px;margin-top:18px;color:#c2d1e2;font-size:13px}.level-track{height:9px;background:#293b50;border-radius:20px;overflow:hidden;margin-top:8px}.level-track i{display:block;height:100%;width:0;background:linear-gradient(90deg,#259d95,#60ddca,#d7b66b);border-radius:20px;transition:width .3s}.level-badges{display:flex;gap:8px;margin-top:14px}.level-badge{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;border:1px solid #34465d;background:#17253a;color:#8295ad;font-weight:700;font-size:12px}.level-badge.reached{color:#70d9ca;border-color:#287a75;background:#153934}.level-badge.current{color:#101c2a;background:#d8b66b;border-color:#d8b66b;box-shadow:0 0 0 3px #d8b66b22}.backup-card{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.backup-card h2{font-size:18px;color:#e5edf7}.backup-card p{font-size:13px}.backup-actions{display:flex;gap:8px;flex-wrap:wrap}.backup-card .small{flex-basis:100%;margin-top:0}
 @media(max-width:760px){.pl-days{gap:4px}.pl-day{padding:8px 1px;border-radius:10px}.pl-day small{font-size:10px}.pl-day b{font-size:17px}.pl-progress{grid-template-columns:1fr;gap:13px}.pl-head{align-items:stretch;flex-wrap:wrap}.pl-tabs{flex:1}.pl-tabs button{flex:1}.pl-head>.pl-btn{width:100%}.pl-grid2{grid-template-columns:1fr}.level-emblem{width:82px;height:82px;border-radius:18px}.level-emblem svg{width:70px;height:70px}.level-top h2{font-size:21px}.backup-card{align-items:stretch}.backup-actions>*{flex:1}}
 @media(max-width:420px){.pl-card{padding:12px}.pl-day small{font-size:9px}.pl-day b{font-size:15px}.pl-icon{height:36px;width:36px}.pl-weeknav{grid-template-columns:36px 1fr 36px;gap:5px}.pl-task{padding:10px;gap:8px}.pl-acts .pl-link{font-size:12px;padding-inline:4px}.level-progress-head{font-size:12px}}
+
+/* تحسين وضوح أرقام مؤقت البومودورو */
+#timerDisplay,
+#timer,
+.timer-display,
+.timer-time,
+#timeDisplay,
+.pomodoro-time,
+.pomodoro-timer,
+.timer-circle .time,
+.timer-circle #time {
+  color: #EAF2FF !important;
+  opacity: 1 !important;
+  text-shadow: 0 0 14px rgba(120, 180, 255, 0.12);
+}
