@@ -45,11 +45,27 @@ $('#nameForm').addEventListener('submit', e => {
 $('#nameCancel').addEventListener('click', () => { $('#welcome').hidden = true; });
 $('#editName').addEventListener('click', () => showWelcome(true));
 
+
 function renderGreeting() {
   const h = new Date().getHours();
-  $('#greetTime').textContent = h < 12 ? 'صباح الخير' : h < 18 ? 'مساء النور' : 'مساء الخير';
+
+  let greeting;
+
+  if (h >= 0 && h < 5) {
+    greeting = 'طاب مساؤك';
+  } else if (h >= 5 && h < 12) {
+    greeting = 'صباح الخير';
+  } else if (h >= 12 && h < 17) {
+    greeting = 'مساء النور';
+  } else {
+    greeting = 'مساء الخير';
+  }
+
+  $('#greetTime').textContent = greeting;
   $('#greetName').textContent = 'أهلاً ' + (S.name || '');
   $('#chipName').textContent = S.name || 'الاسم';
+}
+
 }
 
 /* ========= العد التنازلي لبداية الامتحانات (الصفحة الرئيسية فقط) ========= */
