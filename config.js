@@ -55,7 +55,7 @@ function lectureLabel(name) {
 // عدّل عدد المحاضرات (أو الأجزاء) لكل مادة حسب ما عندك فعلاً
 const SUBJECTS = [
   { name: 'تشريح الجهاز العصبي', lectures: ['L02a', 'L02b', 'L03a', 'L03b', 'L04', 'L05a', 'L05b', 'L06', 'L07', 'L08'], color: '#FF6F61', icon: 'i-brain' },
-  { name: 'الفيزيولوجيا 2',      lectures: LECTS(12), color: '#14B8A6', icon: 'i-pulse' },
+    { name: 'الفيزيولوجيا 2',      lectures: LECTS(20).filter(n => n !== 'L08'), color: '#14B8A6', icon: 'i-pulse' },
   { name: 'الكيمياء السريرية 2', lectures: LECTS(10), color: '#4C9AFF', icon: 'i-pill'  },
   { name: 'أخلاقيات الطب',       lectures: LECTS(12), color: '#F5B93B', icon: 'i-book'  },
   { name: 'الوبائيات',           lectures: LECTS(12), color: '#8B7CF6', icon: 'i-stats' },
