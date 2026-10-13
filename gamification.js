@@ -1,14 +1,13 @@
 /* ==========================================
    نظام النجوم (gamification.js)
-   عرض النجوم التاريخية والمكافآت الجديدة من نظام Med13Rewards.
-   لا تُحتسب جلسات بومودورو هنا حتى لا تتكرر المكافآت.
+   عرض النجوم التاريخية والمكافآت الجديدة من Med13Rewards.
    ========================================== */
 
 const SESSIONS_PER_STAR = 8;
 const STARS_PER_SESSION_MILESTONE = 3;
 const MAX_STARS_SHOWN = 30;
 
-let lastStars = null; // لتحريك النجمة الجديدة فقط
+let lastStars = null;
 
 function localDayKey() {
     const d = new Date();
@@ -19,8 +18,6 @@ function localDayKey() {
         p(d.getDate());
 }
 
-// نجوم الجلسات الجديدة تُدار حصراً عبر Med13Rewards لتجنّب تكرار المكافآت.
-// نحتفظ بـ S.starsByDay كما هي لأنها تمثل النجوم التاريخية المحفوظة سابقاً.
 function updateStars() {
     try {
         if (typeof S === 'undefined' || !S || !S.sessions) return;
@@ -57,10 +54,8 @@ function updateStars() {
 
 function renderStars(total) {
     const row = document.getElementById('starsRow');
-
     if (!row) return;
 
-    // صف النجوم
     const shown = Math.min(total, MAX_STARS_SHOWN);
     const slots = Math.max(5, shown);
     const isNew = lastStars !== null && total > lastStars;
@@ -83,16 +78,10 @@ function renderStars(total) {
 
     lastStars = total;
 
-    // تقدم جلسات الدراسة في اليوم الحالي فقط
-    const todayN = Math.max(
-        0,
-        Number(S.sessions[localDayKey()]) || 0
-    );
-
+    // تقدم جلسات اليوم فقط.
+    const todayN = Number(S.sessions[localDayKey()]) || 0;
     const cycle = todayN % SESSIONS_PER_STAR;
-    const milestonesToday = Math.floor(
-        todayN / SESSIONS_PER_STAR
-    );
+    const full = todayN > 0 && cycle === 0;
 
     const countEl = document.getElementById('starsCount');
     const barEl = document.getElementById('starBar');
@@ -103,31 +92,28 @@ function renderStars(total) {
     }
 
     if (barEl) {
-        barEl.style.width = (
-            todayN > 0 && cycle === 0
-                ? 100
-                : cycle / SESSIONS_PER_STAR * 100
-        ) + '%';
+        barEl.style.width =
+            (full ? 100 : cycle / SESSIONS_PER_STAR * 100) + '%';
     }
 
     if (noteEl) {
         if (todayN === 0) {
             noteEl.textContent =
-                'أكمل 8 جلسات تركيز اليوم لتحصل على 3 نجمات!';
-        } else if (cycle === 0) {
+                'أكمل 8 جلسات تركيز اليوم لتحصل على 3 نجوم!';
+        } else if (full) {
+            const earned =
+                Math.floor(todayN / SESSIONS_PER_STAR) *
+                STARS_PER_SESSION_MILESTONE;
+
             noteEl.textContent =
-                `ممتاز! أنجزت ${todayN} جلسة اليوم، ` +
-                `ومكافآتها ${milestonesToday * STARS_PER_SESSION_MILESTONE} نجمات. ` +
-                'أكمل 8 جلسات أخرى لتحصل على 3 نجمات إضافية.';
+                `ممتاز! أنجزت ${todayN} جلسة اليوم، ومكافآتها ${earned} نجوم. أكمل 8 جلسات أخرى لتحصل على 3 نجوم إضافية.`;
         } else {
             noteEl.textContent =
-                `أنجزت اليوم ${todayN} جلسة. ` +
-                `تقدّمك نحو المكافأة التالية ${cycle} من ${SESSIONS_PER_STAR} جلسات، ` +
-                `وباقي ${SESSIONS_PER_STAR - cycle} جلسات للحصول على 3 نجمات إضافية.`;
+                `أنجزت اليوم ${cycle} من ${SESSIONS_PER_STAR} جلسات، وباقي ${SESSIONS_PER_STAR - cycle} جلسات للحصول على 3 نجوم.`;
         }
     }
 
-    // سجل النجوم اليومي (آخر 7 أيام فيها نجوم)
+    // سجل النجوم اليومية القديمة، دون حذفها.
     const log = document.getElementById('starLog');
 
     if (log) {
@@ -141,7 +127,6 @@ function renderStars(total) {
 
         if (days.length) {
             const lab = document.createElement('small');
-
             lab.textContent = 'سجل النجوم:';
             log.appendChild(lab);
 
@@ -150,7 +135,8 @@ function renderStars(total) {
 
                 chip.textContent =
                     d.slice(5).replace('-', '/') +
-                    '  ⭐ ' + S.starsByDay[d];
+                    '  ⭐ ' +
+                    S.starsByDay[d];
 
                 log.appendChild(chip);
             });
