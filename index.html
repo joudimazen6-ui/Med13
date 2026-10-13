@@ -74,6 +74,7 @@
       </div>
       <svg class="ecg" viewBox="0 0 640 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 60h150l12-22 14 44 16-70 16 80 12-32h380"/></svg>
     </div>
+
     <!-- العد التنازلي لبداية الامتحانات -->
     <div class="card countdown-card home-countdown">
       <div class="progress-head"><b>⏳ العد التنازلي لبداية الامتحانات</b><span id="exam-date-label"></span></div>
@@ -86,40 +87,71 @@
       <p class="countdown-note" id="countdown-status"></p>
     </div>
 
-    <!-- نجومي: نجمة لكل 8 جلسات -->
+    <!-- نقاط الخبرة XP -->
     <div class="card stars-card">
-      <div class="progress-head"><b>⭐ نجومي</b><span id="starsCount">0 نجمة</span></div>
-      <div id="starsRow" class="stars-row" role="img" aria-label="نجومك"></div>
+      <div class="progress-head"><b>XP | نقاط الخبرة</b><span id="starsCount">0 XP</span></div>
+      <div id="starsRow" class="stars-row" role="status" aria-label="نقاط الخبرة XP"></div>
       <div class="bar"><i id="starBar"></i></div>
       <p class="countdown-note" id="starNote"></p>
       <div class="star-log" id="starLog"></div>
     </div>
 
     <section class="level-card card" aria-labelledby="levelTitle">
-      <div class="level-top"><div><p class="eyebrow">رحلتك الدراسية</p><h2 id="levelTitle">المستوى <span id="levelNumber">1</span></h2><p id="levelCaption">ابدأ رحلتك واجمع النجوم</p></div><div id="levelEmblem" class="level-emblem level-1" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 8 86 29 86 71 50 92 14 71 14 29Z M50 8V92 M14 29 86 71 M86 29 14 71"/><circle cx="50" cy="50" r="22"/><circle cx="50" cy="8" r="4"/><circle cx="86" cy="29" r="4"/><circle cx="86" cy="71" r="4"/><circle cx="50" cy="92" r="4"/><circle cx="14" cy="71" r="4"/><circle cx="14" cy="29" r="4"/></svg></div></div>
-      <div class="level-progress-head"><span id="levelStarText">0 نجمة</span><span id="levelNextText">20 نجمة للمستوى التالي</span></div><div class="level-track"><i id="levelBar"></i></div>
+      <div class="level-top">
+        <div>
+          <p class="eyebrow">رحلتك الدراسية</p>
+          <h2 id="levelTitle">المستوى <span id="levelNumber">1</span></h2>
+          <p id="levelCaption">ابدأ رحلتك واجمع XP</p>
+        </div>
+        <div id="levelEmblem" class="level-emblem level-1" aria-hidden="true">
+          <svg viewBox="0 0 100 100">
+            <path d="M50 8 86 29 86 71 50 92 14 71 14 29Z M50 8V92 M14 29 86 71 M86 29 14 71"/>
+            <circle cx="50" cy="50" r="22"/>
+            <circle cx="50" cy="8" r="4"/>
+            <circle cx="86" cy="29" r="4"/>
+            <circle cx="86" cy="71" r="4"/>
+            <circle cx="50" cy="92" r="4"/>
+            <circle cx="14" cy="71" r="4"/>
+            <circle cx="14" cy="29" r="4"/>
+          </svg>
+        </div>
+      </div>
+      <div class="level-progress-head"><span id="levelStarText">0 XP</span><span id="levelNextText">20 XP للمستوى التالي</span></div>
+      <div class="level-track"><i id="levelBar"></i></div>
       <div class="level-badges" id="levelBadges" aria-label="المستويات"></div>
     </section>
-    <section class="card backup-card"><div><h2>نسخة احتياطية لبياناتك</h2><p class="muted">صدّر بياناتك للاحتفاظ بنسخة أو استعد نسخة سابقة على هذا الجهاز.</p></div><div class="backup-actions"><button type="button" id="exportData" class="btn primary">تصدير البيانات</button><button type="button" id="importDataBtn" class="btn ghost">استيراد نسخة</button><input type="file" id="importDataFile" accept="application/json,.json" hidden></div><p id="backupStatus" class="muted small" role="status"></p></section>
 
-    <!-- ملاحظة شرح السماعات -->
+    <section class="card backup-card">
+      <div>
+        <h2>نسخة احتياطية لبياناتك</h2>
+        <p class="muted">صدّر بياناتك للاحتفاظ بنسخة أو استعد نسخة سابقة على هذا الجهاز.</p>
+      </div>
+      <div class="backup-actions">
+        <button type="button" id="exportData" class="btn primary">تصدير البيانات</button>
+        <button type="button" id="importDataBtn" class="btn ghost">استيراد نسخة</button>
+        <input type="file" id="importDataFile" accept="application/json,.json" hidden>
+      </div>
+      <p id="backupStatus" class="muted small" role="status"></p>
+    </section>
+
+    <!-- ملاحظة مهمة: العمل دون اتصال -->
     <div class="guide-card">
-      <div class="guide-icon">⭐</div>
+      <div class="guide-icon">ℹ️</div>
       <div class="guide-text">
-        <strong>  ملاحظة مهمة !  </strong>
-        <p> الموقع مصمم ليعمل حتى عند قطع الاتصال بالانترنت حيث انه يمكنك فتحه عند عدم الاتصال بالإنترنت عن طريق الضغط على الرابط المرسل على التيليجرام...لكن يرجى إبقاء المتصفح مفتوحا الى أن تظهر علامة "جاهز أوفلاين" جانب كل المحاضرات (عدا المواد الي لسا ما نزلت محاضراتها) لضمان فتحها عند قطع الاتصال بالإنترنت فقط عندما تفتح الموقع لأول مرة (و أي إضافات بتوصلكم بإذن الله )    </p>
+        <strong>ملاحظة مهمة!</strong>
+        <p>الموقع مصمم ليعمل حتى عند قطع الاتصال بالإنترنت، حيث يمكنك فتحه دون اتصال بعد فتحه أول مرة وانتظار ظهور علامة «جاهز أوفلاين» بجانب المحاضرات (عدا المواد التي لم تُرفع محاضراتها بعد). يُرجى إبقاء المتصفح مفتوحًا حتى اكتمال التجهيز. وأي إضافات جديدة بتوصلكم بإذن الله.</p>
       </div>
     </div>
-    
+
+    <!-- شرح نقاط الخبرة -->
     <div class="guide-card">
       <div class="guide-icon">XP</div>
       <div class="guide-text">
         <strong>ما هي نقاط XP وكيف أحصل عليها؟</strong>
-        <p> .تحصل على نقطة XP عند إكمال كل 3 مهام أضفتها في المخطط الأسبوعي. كما تحصل على 3 نقاط مكافأة لكل 8 جلسات بومودورو مكتملة في اليوم الواحد. تُعرض مستوياتك وفق مجموع النقاط   </p>
+        <p>تحصل على نقطة XP واحدة عند إكمال كل 3 إنجازات للمهام في المخطط الأسبوعي، كما تحصل على 3 نقاط XP مقابل كل 8 جلسات بومودورو مكتملة في اليوم الواحد. تُعرض مستوياتك وفق مجموع نقاط الخبرة.</p>
       </div>
     </div>
 
-    
   </section>
 
   <!-- بومودورو -->
@@ -165,6 +197,7 @@
       <p class="muted small">ضع ملفات PDF داخل المجلدات: pdfs/subject1/L01.pdf وهكذا.</p>
     </div>
   </section>
+
   <!-- المخطط الأسبوعي -->
   <section id="week" class="panel" aria-label="المخطط الأسبوعي"></section>
 </main>
@@ -189,6 +222,6 @@
 <script src="gamification.js"></script>
 <script src="planner.js"></script>
 <script src="levels-backup.js"></script>
-  
+
 </body>
 </html>
